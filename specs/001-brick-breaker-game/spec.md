@@ -2,28 +2,48 @@
 
 **Feature Branch**: `001-brick-breaker-game`
 **Created**: 2025-12-02
+**Updated**: 2025-12-04
 **Status**: Draft
 **Input**: User description: "Sporniket's Wrecking Ball is a brick breaker game, for Linux OS with a possibility of a version for Android OS. The application is structured around several screens : a main menu that serves as a hub for the other screens ; a casual game screen that allows to select a level among the unlocked ones and start to play, starting from the selected level, and with unlimited number of balls ; an arcade game screen that allows to play starting by the first level, with a limited amount of balls (3, 5, or 7, to be selected before starting to play) ; an hall of trophies/achievements screen, showing some metrics of the players as badges ; a 'my other games' screen to tease about other games availables ; a configuration screen to adjust player controls, the audio volume, etc... ; a level editor screen, that will allow players to go beyond the builtin levels."
 
+**Distinctive Gameplay Features** (added 2025-12-04): The game features three types of levels with different win conditions:
+- Classical levels: Break all breakable bricks
+- "Reach for the stars" levels: Break all star-shaped bricks (other breakable bricks don't count)
+- "Get the key" levels: Break all key-shaped bricks first to enable exit bricks, then break an exit brick
+
+Design distinction: Bricks have variable widths (from 1 unit to full play field width) while maintaining a fixed height of 1 unit.
+
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Core Gameplay (Priority: P1)
+### User Story 1 - Core Gameplay with Multiple Level Types (Priority: P1)
 
-A player launches the game, navigates to the casual game mode, selects an unlocked level, and plays the classic brick breaker gameplay: controlling a paddle to bounce a ball that destroys bricks. The player experiences smooth, responsive controls and clear visual feedback as bricks break and the score increases. When all bricks are destroyed, the level is completed and the next level is unlocked.
+A player launches the game, navigates to the casual game mode, selects an unlocked level, and plays the brick breaker gameplay: controlling a paddle to bounce a ball that destroys bricks. The player experiences smooth, responsive controls and clear visual feedback as bricks break and the score increases. The game features three distinct level types with different completion conditions:
 
-**Why this priority**: This is the minimum viable product - the core brick breaker gameplay that defines the game's identity. Without this, there is no game. All other features depend on having a playable game loop.
+- **Classical levels**: Player must break all breakable bricks to complete the level
+- **"Reach for the Stars" levels**: Player must break all star-shaped bricks to complete (other breakable bricks don't count toward completion)
+- **"Get the Key" levels**: Player must first break all key-shaped bricks to unlock the exit bricks, then break one exit brick to complete the level
 
-**Independent Test**: Can be fully tested by launching the game, starting a level, playing with paddle controls (keyboard/mouse), destroying bricks, and completing the level. Delivers immediate playable value and validates core game mechanics.
+The game features variable-width bricks that can be as narrow as 1 unit or as wide as the entire play field width, while all bricks maintain a uniform height of 1 unit.
+
+**Why this priority**: This is the minimum viable product - the core brick breaker gameplay with the distinctive level mechanics that define the game's unique identity. Without this, there is no game. All other features depend on having a playable game loop with these three level types.
+
+**Independent Test**: Can be fully tested by launching the game, starting each of the three level types, playing with paddle controls (keyboard/mouse), destroying bricks according to each level's completion rules, and verifying proper completion detection. Delivers immediate playable value and validates core game mechanics including the distinctive level types.
 
 **Acceptance Scenarios**:
 
-1. **Given** the game is launched and main menu is displayed, **When** the player selects casual mode and chooses a level, **Then** the game screen loads with paddle, ball(s), and brick layout visible
+1. **Given** the game is launched and main menu is displayed, **When** the player selects casual mode and chooses a level, **Then** the game screen loads with paddle, ball(s), and brick layout visible with variable-width bricks
 2. **Given** the player is in an active game, **When** the player moves the paddle left/right using input controls, **Then** the paddle moves smoothly and responsively with input latency below 16ms
 3. **Given** the ball is in motion, **When** the ball collides with a brick, **Then** the brick is destroyed, the ball bounces with realistic physics, and the score increases
 4. **Given** the ball is in motion, **When** the ball collides with the paddle, **Then** the ball bounces at an angle based on collision point
 5. **Given** the ball is in motion, **When** the ball falls below the paddle, **Then** the ball respawns from the paddle (casual mode has unlimited balls)
-6. **Given** all bricks in a level are destroyed, **When** the last brick is hit, **Then** the level completion screen appears, next level is unlocked, and player can proceed
-7. **Given** the player is in an active game, **When** the player pauses the game, **Then** gameplay freezes and a pause menu appears with options to resume or exit
+6. **Given** the player is playing a classical level and all breakable bricks are destroyed, **When** the last brick is hit, **Then** the level completion screen appears, next level is unlocked, and player can proceed
+7. **Given** the player is playing a "Reach for the Stars" level with both star-shaped and regular breakable bricks, **When** all star-shaped bricks are destroyed (regardless of remaining regular bricks), **Then** the level completion screen appears
+8. **Given** the player is playing a "Get the Key" level with key-shaped bricks and exit bricks, **When** all key-shaped bricks are destroyed, **Then** the exit bricks become active/enabled (visually distinct)
+9. **Given** the player is in a "Get the Key" level and all key bricks have been destroyed, **When** the player hits an active exit brick, **Then** the level completion screen appears
+10. **Given** the player is in a "Get the Key" level and not all key bricks have been destroyed, **When** the player hits an exit brick, **Then** the exit brick does not respond (remains inactive) and the level continues
+11. **Given** the player is in an active game, **When** the player pauses the game, **Then** gameplay freezes and a pause menu appears with options to resume or exit
+12. **Given** bricks of various widths are displayed, **When** the ball collides with a narrow brick (1 unit wide), **Then** the brick breaks and collision behaves correctly
+13. **Given** bricks of various widths are displayed, **When** the ball collides with a wide brick (multiple units wide, up to full width), **Then** the brick breaks and collision detection works correctly across its entire width
 
 ---
 
@@ -157,6 +177,12 @@ A player accesses the "My Other Games" screen from the main menu and views infor
 - What happens when no audio device is available? (Game should run silently without crashing; settings should indicate audio unavailable)
 - What happens when the player attempts to remap a control to an already-used key? (System should warn of conflict and allow player to confirm or cancel)
 - What happens when the level editor creates an unplayable level (no bricks)? (System should warn player before saving; or allow saving but mark as invalid for gameplay)
+- What happens in a "Reach for the Stars" level when the last star brick and a regular brick are destroyed by the same ball hit? (Level should complete immediately when star brick count reaches zero)
+- What happens in a "Get the Key" level when the player breaks the last key brick and an exit brick with the same ball bounce? (Exit brick should activate first, then break on the same hit, completing the level)
+- What happens in a "Get the Key" level when all key bricks are destroyed but there are no exit bricks in the level? (Level editor validation should prevent this; if it occurs, level should auto-complete or show error message)
+- What happens when a level has both key bricks and star bricks? (Level type is determined by which special brick type defines completion - this should be specified in level metadata; level editor should prevent mixing incompatible completion types)
+- What happens when collision detection is needed for an extremely wide brick (full play field width)? (Collision should work correctly across entire width; ball should bounce based on impact point along the brick's surface)
+- What happens when a very narrow brick (1 unit) is positioned between two wider bricks? (All bricks should render correctly without visual overlaps; collision detection should work precisely for each brick)
 
 ## Requirements *(mandatory)*
 
@@ -164,111 +190,140 @@ A player accesses the "My Other Games" screen from the main menu and views infor
 
 **Core Gameplay:**
 
-- **FR-001**: System MUST display a game screen with a movable paddle, one or more balls, and a grid of destructible bricks
+- **FR-001**: System MUST display a game screen with a movable paddle, one or more balls, and a layout of destructible bricks with variable widths
 - **FR-002**: System MUST accept player input via keyboard and mouse to control paddle horizontal movement
-- **FR-003**: System MUST implement ball physics with realistic collision detection for paddle, bricks, and walls
-- **FR-004**: System MUST calculate ball bounce angles based on collision points (especially paddle contact point)
+- **FR-003**: System MUST implement ball physics with realistic collision detection for paddle, bricks (including variable-width bricks), and walls
+- **FR-004**: System MUST calculate ball bounce angles based on collision points (especially paddle contact point and point of impact on variable-width bricks)
 - **FR-005**: System MUST remove bricks when struck by the ball and update the score
 - **FR-006**: System MUST maintain minimum 60 FPS during active gameplay
 - **FR-007**: System MUST keep input latency below 16ms
+- **FR-008**: System MUST support bricks with variable widths ranging from 1 unit to the full play field width
+- **FR-009**: System MUST enforce uniform brick height of 1 unit for all bricks
+- **FR-010**: System MUST handle collision detection accurately for bricks of any width within the supported range
+
+**Level Types & Win Conditions:**
+
+- **FR-011**: System MUST support three distinct level types: Classical, "Reach for the Stars", and "Get the Key"
+- **FR-012**: System MUST track level type metadata for each level to determine win conditions
+- **FR-013**: For Classical levels, system MUST detect level completion when all breakable bricks are destroyed
+- **FR-014**: For "Reach for the Stars" levels, system MUST include star-shaped bricks as a distinct brick type
+- **FR-015**: For "Reach for the Stars" levels, system MUST detect level completion when all star-shaped bricks are destroyed, regardless of remaining regular breakable bricks
+- **FR-016**: For "Get the Key" levels, system MUST include key-shaped bricks and exit bricks as distinct brick types
+- **FR-017**: For "Get the Key" levels, system MUST track when all key-shaped bricks are destroyed and activate/enable exit bricks
+- **FR-018**: For "Get the Key" levels, exit bricks MUST be inactive (non-responsive to ball collisions) until all key-shaped bricks are destroyed
+- **FR-019**: For "Get the Key" levels, system MUST detect level completion when any active exit brick is destroyed after all keys are collected
+- **FR-020**: System MUST visually distinguish between brick types (regular breakable, star-shaped, key-shaped, exit, inactive exit, active exit)
+- **FR-021**: System MUST provide visual feedback when exit bricks become active in "Get the Key" levels
 
 **Game Modes:**
 
-- **FR-008**: System MUST provide a casual game mode with unlimited balls and level selection
-- **FR-009**: System MUST provide an arcade game mode with selectable starting lives (3, 5, or 7) and sequential level progression starting from level 1
-- **FR-010**: System MUST track lives in arcade mode and end the game when lives reach zero
-- **FR-011**: System MUST respawn balls from the paddle position when they fall below the paddle
+- **FR-022**: System MUST provide a casual game mode with unlimited balls and level selection
+- **FR-023**: System MUST provide an arcade game mode with selectable starting lives (3, 5, or 7) and sequential level progression starting from level 1
+- **FR-024**: System MUST track lives in arcade mode and end the game when lives reach zero
+- **FR-025**: System MUST respawn balls from the paddle position when they fall below the paddle
 
 **Navigation & UI:**
 
-- **FR-012**: System MUST display a main menu on game launch with navigation to all game screens
-- **FR-013**: System MUST allow navigation between screens: Main Menu, Casual Game, Arcade Game, Level Selection, Trophies, Settings, Level Editor, My Other Games
-- **FR-014**: System MUST provide a way to return to the main menu from any screen
-- **FR-015**: System MUST display current score, level number, and remaining lives (arcade mode) during gameplay
+- **FR-026**: System MUST display a main menu on game launch with navigation to all game screens
+- **FR-027**: System MUST allow navigation between screens: Main Menu, Casual Game, Arcade Game, Level Selection, Trophies, Settings, Level Editor, My Other Games
+- **FR-028**: System MUST provide a way to return to the main menu from any screen
+- **FR-029**: System MUST display current score, level number, level type, and remaining lives (arcade mode) during gameplay
 
 **Level System:**
 
-- **FR-016**: System MUST include multiple built-in brick breaker levels with varying brick layouts
-- **FR-017**: System MUST track which levels are unlocked in casual mode
-- **FR-018**: System MUST unlock the next sequential level when a level is completed
-- **FR-019**: System MUST display locked and unlocked levels visually in level selection screen
-- **FR-020**: System MUST allow players to select and start any unlocked level in casual mode
+- **FR-030**: System MUST include multiple built-in brick breaker levels with varying brick layouts, level types, and brick widths
+- **FR-031**: System MUST include levels of all three types (Classical, "Reach for the Stars", "Get the Key") in the built-in level collection
+- **FR-032**: System MUST track which levels are unlocked in casual mode
+- **FR-033**: System MUST unlock the next sequential level when a level is completed
+- **FR-034**: System MUST display locked and unlocked levels visually in level selection screen
+- **FR-035**: System MUST allow players to select and start any unlocked level in casual mode
 
 **Progression & Persistence:**
 
-- **FR-021**: System MUST save player progress (unlocked levels, settings, achievements) and persist across game sessions
-- **FR-022**: System MUST track player statistics (total levels completed, highest score, total bricks destroyed)
-- **FR-023**: System MUST detect when achievement criteria are met and award achievements
-- **FR-024**: System MUST display earned achievements in the Hall of Trophies screen
+- **FR-036**: System MUST save player progress (unlocked levels, settings, achievements) and persist across game sessions
+- **FR-037**: System MUST track player statistics (total levels completed by type, highest score, total bricks destroyed, total star bricks collected, total keys collected)
+- **FR-038**: System MUST detect when achievement criteria are met and award achievements
+- **FR-039**: System MUST display earned achievements in the Hall of Trophies screen
 
 **Settings & Configuration:**
 
-- **FR-025**: System MUST allow players to configure control mappings (keyboard keys for paddle movement, pause, etc.)
-- **FR-026**: System MUST allow players to adjust audio volume for master, music, and sound effects separately
-- **FR-027**: System MUST save player settings and apply them on subsequent game launches
-- **FR-028**: System MUST apply setting changes immediately (audio volume changes heard instantly)
+- **FR-040**: System MUST allow players to configure control mappings (keyboard keys for paddle movement, pause, etc.)
+- **FR-041**: System MUST allow players to adjust audio volume for master, music, and sound effects separately
+- **FR-042**: System MUST save player settings and apply them on subsequent game launches
+- **FR-043**: System MUST apply setting changes immediately (audio volume changes heard instantly)
 
 **Level Editor:**
 
-- **FR-029**: System MUST provide a level editor interface with a grid for placing/removing bricks
-- **FR-030**: System MUST allow players to select brick types when placing bricks in the editor
-- **FR-031**: System MUST allow players to test custom levels directly from the editor
-- **FR-032**: System MUST allow players to save custom levels with a player-provided name
-- **FR-033**: System MUST include custom levels in the casual mode level selection screen
-- **FR-034**: System MUST validate custom levels before saving (warn if level has no bricks)
+- **FR-044**: System MUST provide a level editor interface with a grid for placing/removing bricks
+- **FR-045**: System MUST allow players to select brick types when placing bricks in the editor (regular, star-shaped, key-shaped, exit)
+- **FR-046**: System MUST allow players to specify brick width when placing bricks (from 1 unit to full play field width)
+- **FR-047**: System MUST allow players to select the level type (Classical, "Reach for the Stars", or "Get the Key") for custom levels
+- **FR-048**: System MUST allow players to test custom levels directly from the editor
+- **FR-049**: System MUST allow players to save custom levels with a player-provided name
+- **FR-050**: System MUST include custom levels in the casual mode level selection screen
+- **FR-051**: System MUST validate custom levels before saving (warn if level has no bricks, "Reach for the Stars" has no star bricks, or "Get the Key" has no key bricks or exit bricks)
 
 **Other Features:**
 
-- **FR-035**: System MUST display information about other games by the developer in the "My Other Games" screen
-- **FR-036**: System MUST provide pause functionality during active gameplay
-- **FR-037**: System MUST display level completion screen when all bricks are destroyed
-- **FR-038**: System MUST display game over screen in arcade mode when lives are exhausted
+- **FR-052**: System MUST display information about other games by the developer in the "My Other Games" screen
+- **FR-053**: System MUST provide pause functionality during active gameplay
+- **FR-054**: System MUST display level completion screen when level-specific win conditions are met
+- **FR-055**: System MUST display game over screen in arcade mode when lives are exhausted
 
 **Platform Requirements:**
 
-- **FR-039**: System MUST run as a native Linux desktop application
-- **FR-040**: System MUST separate platform-specific code from core game logic to support future Android porting
+- **FR-056**: System MUST run as a native Linux desktop application
+- **FR-057**: System MUST separate platform-specific code from core game logic to support future Android porting
 
 **Legal & Licensing:**
 
-- **FR-041**: All source code files MUST include copyright notice "Copyright (c) 2025 David SPORN" and SPDX license identifier "AGPL-3.0-or-later"
-- **FR-042**: Repository MUST include LICENSE file with complete AGPL-3.0 license text
+- **FR-058**: All source code files MUST include copyright notice "Copyright (c) 2025 David SPORN" and SPDX license identifier "AGPL-3.0-or-later"
+- **FR-059**: Repository MUST include LICENSE file with complete AGPL-3.0 license text
 
 ### Key Entities
 
-- **Level**: Represents a playable stage with a specific brick layout, difficulty, and completion state (locked/unlocked)
-- **Brick**: Represents a destructible block with position, type/color, and health/durability
+- **Level**: Represents a playable stage with a specific brick layout, level type (Classical, "Reach for the Stars", or "Get the Key"), difficulty, and completion state (locked/unlocked)
+- **Brick**: Represents a destructible block with position, type (regular, star-shaped, key-shaped, exit), width (1 unit to full play field width), height (fixed at 1 unit), color, and health/durability
 - **Ball**: Represents a game ball with position, velocity vector, and active/inactive state
 - **Paddle**: Represents the player-controlled horizontal bar with position and movement speed
-- **Player Progress**: Represents persistent data including unlocked levels, highest scores, completed levels, and earned achievements
+- **Player Progress**: Represents persistent data including unlocked levels, highest scores, completed levels by type, earned achievements, and statistics (total bricks destroyed, stars collected, keys collected)
 - **Achievement**: Represents a trophy/badge with unlock criteria, earned status, and descriptive information
-- **Custom Level**: Represents a player-created level with brick layout and metadata (name, author, creation date)
+- **Custom Level**: Represents a player-created level with brick layout, level type, variable-width bricks, and metadata (name, author, creation date)
 - **Game Settings**: Represents player preferences including control mappings, audio volumes, and display options
-- **Game State**: Represents current gameplay session with current level, score, remaining lives, ball positions, brick states
+- **Game State**: Represents current gameplay session with current level, level type, score, remaining lives, ball positions, brick states, key collection status (for "Get the Key" levels), and exit brick activation status
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
 - **SC-001**: Players can launch the game, navigate to casual mode, and start playing a level within 30 seconds of application start
-- **SC-002**: Gameplay maintains 60 FPS on target hardware (defined as: Linux desktop with integrated graphics from 2020 or newer) during active gameplay with full screen of bricks
+- **SC-002**: Gameplay maintains 60 FPS on target hardware (defined as: Linux desktop with integrated graphics from 2020 or newer) during active gameplay with full screen of variable-width bricks
 - **SC-003**: Paddle responds to player input with latency below 16ms (one frame at 60 FPS)
-- **SC-004**: Players can complete a full game loop (start level, destroy all bricks, complete level) and verify score increases and next level unlocks
+- **SC-004**: Players can complete a full game loop for each level type (Classical, "Reach for the Stars", "Get the Key") and verify correct completion detection and next level unlocks
 - **SC-005**: 90% of players successfully navigate from main menu to their desired screen on first attempt without confusion
-- **SC-006**: Player progress (unlocked levels, settings, achievements) persists correctly across game restarts with zero data loss
-- **SC-007**: Players can create a custom level in the level editor, save it, and play it in casual mode within 5 minutes
-- **SC-008**: Ball physics produces predictable and fair bounces - players can control ball direction by hitting with different paddle positions
+- **SC-006**: Player progress (unlocked levels, settings, achievements, level-specific statistics) persists correctly across game restarts with zero data loss
+- **SC-007**: Players can create a custom level in the level editor with variable-width bricks and a chosen level type, save it, and play it in casual mode within 5 minutes
+- **SC-008**: Ball physics produces predictable and fair bounces with variable-width bricks - players can control ball direction by hitting with different paddle positions
 - **SC-009**: All seven main screens (Main Menu, Casual Game, Arcade Game, Level Selection, Trophies, Settings, Level Editor, My Other Games) are accessible and functional
-- **SC-010**: Game runs for 1 hour of continuous gameplay without crashes, memory leaks, or performance degradation
+- **SC-010**: Game runs for 1 hour of continuous gameplay across all three level types without crashes, memory leaks, or performance degradation
 - **SC-011**: Audio volume adjustments in settings are immediately audible and persist across game sessions
-- **SC-012**: Players complete arcade mode runs (start to game over) and final score/level statistics are accurate
+- **SC-012**: Players complete arcade mode runs (start to game over) with mixed level types and final score/level statistics are accurate
+- **SC-013**: Players can distinguish between the three level types visually and understand win conditions within 10 seconds of starting each type
+- **SC-014**: In "Get the Key" levels, 95% of players understand that exit bricks activate only after collecting all keys (through visual feedback)
+- **SC-015**: Collision detection works correctly for bricks of all widths (1 unit to full play field width) with no missed collisions or false positives
+- **SC-016**: Variable-width bricks render correctly without visual artifacts or overlaps in all levels (built-in and custom)
 
 ### Assumptions
 
 - Target hardware: Linux desktop/laptop with integrated graphics from 2020 or newer, 4GB RAM minimum
 - Players are familiar with basic brick breaker/breakout game mechanics
 - Default controls use standard keyboard keys (arrow keys or WASD for paddle movement) and mouse for menu navigation
-- Built-in levels will number between 10-30 levels for initial release (exact count to be determined during design)
-- Achievement criteria will be designed during implementation to provide reasonable unlock progression (mix of easy, medium, hard achievements)
-- Audio assets (music, sound effects) will be provided or created separately; specification assumes they will be available
+- Built-in levels will number between 10-30 levels for initial release (exact count to be determined during design), with a balanced mix of all three level types
+- Each level will feature a variety of brick widths (narrow, medium, wide, and possibly full-width) to showcase the variable-width brick feature
+- The visual design will clearly distinguish between brick types through shape, color, or icon (star shape, key shape, door/exit icon)
+- Exit bricks in "Get the Key" levels will have two distinct visual states: inactive (grayed out or locked appearance) and active (bright or unlocked appearance)
+- Achievement criteria will be designed during implementation to provide reasonable unlock progression (mix of easy, medium, hard achievements), including achievements specific to each level type
+- Audio assets (music, sound effects) will be provided or created separately; specification assumes they will be available, including distinct sound effects for breaking different brick types
 - "My Other Games" content will be provided as static content/data (game titles, descriptions, images) separately from this implementation
+- The play field width is defined as a fixed number of width units (to be determined during design, e.g., 20 units, 40 units) to allow precise brick width specifications
+- Brick width in the level editor can be specified in discrete units (e.g., 1-unit increments) up to the maximum play field width
