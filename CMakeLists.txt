@@ -54,13 +54,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Catch2)
 
-# Source files will be added as implementation progresses
+# Source files
 set(SOURCES
     src/main.cpp
-    # Core entities (Phase 2 - Foundational)
-    # src/core/entities/brick.cpp
-    # src/core/entities/ball.cpp
-    # ... more sources will be added
+    src/core/application.cpp
+    src/core/logging/error_logger.cpp
+    # Core entities are header-only structs (Phase 2 - Foundational complete)
+    # Platform implementations will be added in Phase 3+
 )
 
 # Create executable
