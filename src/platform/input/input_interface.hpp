@@ -4,10 +4,8 @@
 #pragma once
 
 #include "../../core/entities/input_method.hpp"
+#include <SDL2/SDL.h>
 #include <cstdint>
-
-// Forward declaration to avoid SDL2 dependency in interface
-struct SDL_Point;
 
 namespace wreckingball {
 

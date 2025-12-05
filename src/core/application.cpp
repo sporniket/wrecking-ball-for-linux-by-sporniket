@@ -3,6 +3,14 @@
 
 #include "application.hpp"
 #include "logging/error_logger.hpp"
+#include "../sdl/renderer/sdl_renderer.hpp"
+#include "../sdl/input/sdl_input_handler.hpp"
+#include "../sdl/audio/sdl_audio_player.hpp"
+#include "../persistence/markdown/level_parser.hpp"
+#include "physics/physics_engine.hpp"
+#include "level/completion_checker.hpp"
+#include "game/game_state_manager.hpp"
+#include "../ui/gameplay/gameplay_screen.hpp"
 #include <SDL2/SDL.h>
 #include <iostream>
 
@@ -10,7 +18,7 @@ namespace wreckingball {
 
 Application::Application()
     : is_running_(false), is_initialized_(false),
-      window_(nullptr), renderer_(nullptr),
+      window_(nullptr),
       performance_frequency_(0), fixed_timestep_(FIXED_TIMESTEP) {
 }
 
@@ -109,12 +117,17 @@ void Application::Shutdown() {
 
     ErrorLogger::GetInstance().LogInfo("Shutting down application...");
 
-    // Cleanup SDL2 renderer and window
-    if (renderer_) {
-        SDL_DestroyRenderer(renderer_);
-        renderer_ = nullptr;
-    }
+    // Cleanup game systems (unique_ptrs handle their own cleanup)
+    sdl_renderer_.reset();
+    gameplay_screen_.reset();
+    game_manager_.reset();
+    completion_checker_.reset();
+    physics_engine_.reset();
+    level_parser_.reset();
+    audio_player_.reset();
+    input_handler_.reset();
 
+    // Cleanup SDL2 window
     if (window_) {
         SDL_DestroyWindow(window_);
         window_ = nullptr;
@@ -130,55 +143,48 @@ void Application::Shutdown() {
 }
 
 void Application::ProcessInput([[maybe_unused]] double delta_time) {
-    SDL_Event event;
-    while (SDL_PollEvent(&event)) {
-        switch (event.type) {
-            case SDL_QUIT:
-                ErrorLogger::GetInstance().LogInfo("Quit event received");
+    // T104: Poll input through SDLInputHandler
+    if (input_handler_) {
+        input_handler_->PollInput();
+
+        // Check for quit request
+        if (input_handler_->IsQuitRequested()) {
+            ErrorLogger::GetInstance().LogInfo("Quit event received");
+            RequestExit();
+            return;
+        }
+
+        // Forward input to gameplay screen
+        if (gameplay_screen_) {
+            gameplay_screen_->HandleInput();
+
+            // Check if user wants to exit gameplay
+            if (gameplay_screen_->ShouldExit()) {
+                ErrorLogger::GetInstance().LogInfo("User requested exit");
                 RequestExit();
-                break;
-
-            case SDL_KEYDOWN:
-                // Handle keyboard input
-                if (event.key.keysym.scancode == SDL_SCANCODE_ESCAPE) {
-                    ErrorLogger::GetInstance().LogInfo("Escape key pressed - exiting");
-                    RequestExit();
-                }
-                break;
-
-            default:
-                break;
+            }
         }
     }
-
-    // TODO: Call IInputHandler::PollInput() when implemented
 }
 
 void Application::Update([[maybe_unused]] double delta_time) {
-    // TODO: Update game state with fixed timestep
-    // - Update paddle position
-    // - Update ball physics
-    // - Check collisions
-    // - Update game logic
+    // T104: Update game state with fixed timestep
+    if (gameplay_screen_) {
+        gameplay_screen_->Update(delta_time);
+    }
 }
 
 void Application::Render([[maybe_unused]] double interpolation) {
-    // Clear screen with background color
-    SDL_SetRenderDrawColor(renderer_,
-                          COLOR_BACKGROUND.r,
-                          COLOR_BACKGROUND.g,
-                          COLOR_BACKGROUND.b,
-                          COLOR_BACKGROUND.a);
-    SDL_RenderClear(renderer_);
+    // T104: Render through GameplayScreen
+    if (sdl_renderer_) {
+        sdl_renderer_->BeginFrame();
 
-    // TODO: Render game objects with interpolation
-    // - Draw bricks
-    // - Draw paddle
-    // - Draw ball(s)
-    // - Draw HUD
+        if (gameplay_screen_) {
+            gameplay_screen_->Render();
+        }
 
-    // Present frame
-    SDL_RenderPresent(renderer_);
+        sdl_renderer_->EndFrame();
+    }
 }
 
 bool Application::InitializeSDL() {
@@ -212,32 +218,7 @@ bool Application::CreateWindow() {
         return false;
     }
 
-    // Create renderer with VSync enabled
-    renderer_ = SDL_CreateRenderer(
-        window_,
-        -1,
-        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
-    );
-
-    if (!renderer_) {
-        logger.LogError(std::string("SDL_CreateRenderer failed: ") + SDL_GetError());
-        SDL_DestroyWindow(window_);
-        window_ = nullptr;
-        return false;
-    }
-
-    // Set logical size for retro resolution (320x200)
-    // SDL will handle scaling with letterboxing
-    SDL_RenderSetLogicalSize(renderer_, SCREEN_WIDTH, SCREEN_HEIGHT);
-
-    // Use nearest-neighbor filtering for pixel-perfect scaling
-    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
-
-    // Enable integer scaling for crisp pixels (if supported)
-    SDL_RenderSetIntegerScale(renderer_, SDL_TRUE);
-
     logger.LogInfo("Window created: 960x600 (3x scale of 320x200)");
-    logger.LogInfo("Renderer created with VSync and integer scaling");
 
     return true;
 }
@@ -245,14 +226,74 @@ bool Application::CreateWindow() {
 bool Application::InitializeGameSystems() {
     ErrorLogger& logger = ErrorLogger::GetInstance();
 
-    // TODO: Initialize game systems
-    // - Create platform implementations (SDL input handler, SDL renderer, SDL audio player, SDL file IO)
-    // - Initialize settings manager
-    // - Initialize progress manager
-    // - Initialize achievement tracker
-    // - Load initial game state
+    // T101: Create platform implementations
+    try {
+        sdl_renderer_ = std::make_unique<SDLRenderer>(window_);
+        logger.LogInfo("SDLRenderer created");
+    } catch (const std::exception& e) {
+        logger.LogError(std::string("Failed to create SDLRenderer: ") + e.what());
+        return false;
+    }
 
-    logger.LogInfo("Game systems initialized (placeholder)");
+    input_handler_ = std::make_unique<SDLInputHandler>();
+    logger.LogInfo("SDLInputHandler created");
+
+    audio_player_ = std::make_unique<SDLAudioPlayer>();
+    if (!audio_player_->Initialize()) {
+        logger.LogWarning("Audio initialization failed - running in silent mode");
+    } else {
+        logger.LogInfo("SDLAudioPlayer initialized");
+    }
+
+    // Create game systems
+    level_parser_ = std::make_unique<LevelParser>();
+    logger.LogInfo("LevelParser created");
+
+    physics_engine_ = std::make_unique<PhysicsEngine>();
+    logger.LogInfo("PhysicsEngine created");
+
+    completion_checker_ = std::make_unique<LevelCompletionChecker>();
+    logger.LogInfo("LevelCompletionChecker created");
+
+    // GameStateManager creates its own PhysicsEngine and LevelCompletionChecker
+    game_manager_ = std::make_unique<GameStateManager>();
+    logger.LogInfo("GameStateManager created");
+
+    // T102: Create GameplayScreen
+    gameplay_screen_ = std::make_unique<GameplayScreen>(
+        sdl_renderer_.get(),
+        input_handler_.get(),
+        game_manager_.get()
+    );
+    logger.LogInfo("GameplayScreen created");
+
+    // T103: Load default level (level 1) on game start
+    auto level_opt = level_parser_->LoadLevel("assets/levels/001-classical-easy.md");
+    if (!level_opt.has_value()) {
+        logger.LogError("Failed to load default level: assets/levels/001-classical-easy.md");
+        return false;
+    }
+
+    // Store level persistently to avoid dangling pointer
+    current_level_ = std::move(*level_opt);
+
+    // Log brick count for debugging
+    int total_bricks = 0;
+    for (const auto& brick : current_level_.bricks) {
+        if (brick.type != BrickType::Empty) {
+            total_bricks++;
+        }
+    }
+    logger.LogInfo("Level has " + std::to_string(current_level_.bricks.size()) +
+                   " brick entries (" + std::to_string(total_bricks) + " non-empty)");
+
+    if (!game_manager_->StartLevel(current_level_, GameMode::Casual)) {
+        logger.LogError("Failed to start level");
+        return false;
+    }
+
+    logger.LogInfo("Default level loaded: " + current_level_.name);
+    logger.LogInfo("Game systems initialized successfully");
     return true;
 }
 

@@ -4,13 +4,25 @@
 #pragma once
 
 #include "constants.hpp"
+#include "entities/level.hpp"
 #include <cstdint>
+#include <memory>
 
 // Forward declarations to avoid SDL2 dependency in header
 struct SDL_Window;
 struct SDL_Renderer;
 
 namespace wreckingball {
+
+// Forward declarations for game systems
+class SDLRenderer;
+class SDLInputHandler;
+class SDLAudioPlayer;
+class LevelParser;
+class PhysicsEngine;
+class LevelCompletionChecker;
+class GameStateManager;
+class GameplayScreen;
 
 /**
  * @brief Main application class managing game lifecycle
@@ -97,11 +109,23 @@ private:
 
     // SDL2 components
     SDL_Window* window_;
-    SDL_Renderer* renderer_;
 
     // Timing
     uint64_t performance_frequency_;
     double fixed_timestep_;  // 1/60 second for 60 FPS
+
+    // Game systems (Phase 3 integration)
+    std::unique_ptr<SDLRenderer> sdl_renderer_;
+    std::unique_ptr<SDLInputHandler> input_handler_;
+    std::unique_ptr<SDLAudioPlayer> audio_player_;
+    std::unique_ptr<LevelParser> level_parser_;
+    std::unique_ptr<PhysicsEngine> physics_engine_;
+    std::unique_ptr<LevelCompletionChecker> completion_checker_;
+    std::unique_ptr<GameStateManager> game_manager_;
+    std::unique_ptr<GameplayScreen> gameplay_screen_;
+
+    // Current level (must persist throughout gameplay)
+    Level current_level_;
 };
 
 } // namespace wreckingball

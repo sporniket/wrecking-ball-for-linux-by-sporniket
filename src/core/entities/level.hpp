@@ -26,13 +26,18 @@ struct Level {
     bool is_locked;              // Whether level is unlocked for play
     bool is_custom;              // Whether level is user-created
     uint8_t difficulty;          // Difficulty rating (1-5)
+    std::string difficulty_str;  // Difficulty as string ("Easy", "Medium", "Hard")
+    std::string description;     // Level description (optional)
+    std::string version;         // Level version string (optional)
+    std::string tags;            // Comma-separated tags (optional)
 
     /**
      * @brief Default constructor
      */
     Level()
         : level_id(0), name("Untitled"), level_type(LevelType::Classical),
-          author("Built-in"), is_locked(true), is_custom(false), difficulty(1) {}
+          author("Built-in"), is_locked(true), is_custom(false), difficulty(1),
+          difficulty_str("Easy"), description(""), version("1.0"), tags("") {}
 
     /**
      * @brief Validate level has required brick types for its level_type

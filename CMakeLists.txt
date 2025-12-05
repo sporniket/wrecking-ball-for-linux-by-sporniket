@@ -59,8 +59,18 @@ set(SOURCES
     src/main.cpp
     src/core/application.cpp
     src/core/logging/error_logger.cpp
+    # Phase 3: Core game systems
+    src/persistence/markdown/level_parser.cpp
+    src/core/physics/physics_engine.cpp
+    src/core/level/completion_checker.cpp
+    src/core/game/game_state_manager.cpp
+    # Phase 3: SDL platform implementations
+    src/sdl/renderer/sdl_renderer.cpp
+    src/sdl/input/sdl_input_handler.cpp
+    src/sdl/audio/sdl_audio_player.cpp
+    # Phase 3: UI screens
+    src/ui/gameplay/gameplay_screen.cpp
     # Core entities are header-only structs (Phase 2 - Foundational complete)
-    # Platform implementations will be added in Phase 3+
 )
 
 # Create executable
@@ -93,10 +103,49 @@ install(DIRECTORY assets/
 enable_testing()
 include(CTest)
 
-# Test executables will be added as tests are implemented
-# add_executable(physics_tests tests/unit/physics/collision_test.cpp)
-# target_link_libraries(physics_tests PRIVATE Catch2::Catch2WithMain)
-# add_test(NAME PhysicsTests COMMAND physics_tests)
+# Core entity tests
+add_executable(entity_tests
+    tests/unit/entities/brick_test.cpp
+    tests/unit/entities/ball_test.cpp
+    tests/unit/entities/paddle_test.cpp
+    tests/unit/entities/level_test.cpp
+)
+target_link_libraries(entity_tests PRIVATE Catch2::Catch2WithMain)
+target_include_directories(entity_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+add_test(NAME EntityTests COMMAND entity_tests)
+
+# Physics tests (collision detection)
+add_executable(physics_tests
+    tests/unit/physics/collision_narrow_test.cpp
+    tests/unit/physics/collision_wide_test.cpp
+    tests/unit/physics/collision_fullwidth_test.cpp
+    tests/unit/physics/paddle_bounce_test.cpp
+)
+target_link_libraries(physics_tests PRIVATE Catch2::Catch2WithMain)
+target_include_directories(physics_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+add_test(NAME PhysicsTests COMMAND physics_tests)
+
+# Level completion tests
+add_executable(level_tests
+    tests/unit/level/classical_completion_test.cpp
+    tests/unit/level/star_completion_test.cpp
+    tests/unit/level/key_completion_test.cpp
+    tests/unit/level/exit_activation_test.cpp
+)
+target_link_libraries(level_tests PRIVATE Catch2::Catch2WithMain)
+target_include_directories(level_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+add_test(NAME LevelTests COMMAND level_tests)
+
+# Parser tests
+add_executable(parser_tests
+    tests/unit/persistence/level_parser_valid_test.cpp
+    tests/unit/persistence/level_parser_malformed_test.cpp
+    src/persistence/markdown/level_parser.cpp
+    src/core/logging/error_logger.cpp
+)
+target_link_libraries(parser_tests PRIVATE Catch2::Catch2WithMain)
+target_include_directories(parser_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+add_test(NAME ParserTests COMMAND parser_tests)
 
 # Enable sanitizers in debug mode (optional)
 option(ENABLE_SANITIZERS "Enable address and undefined behavior sanitizers" OFF)

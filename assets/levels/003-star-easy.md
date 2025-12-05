@@ -1,0 +1,20 @@
+---
+level_id: 3
+name: Star Seeker
+level_type: ReachForStars
+difficulty: Easy
+author: David SPORN
+description: Hit all the star bricks to complete this level!
+version: 1.0
+tags: stars, beginner
+---
+
+```brick-layout
+R----- R----- R----- R----- R----- R----- R-
+R----- S-- R----- R----- R----- S-- R----- R-
+R----- R----- R----- R----- R----- R----- R-
+..... ..... ..... ..... ..... ..... ..... .
+R----- R----- R----- R----- R----- R----- R-
+R----- R----- S-- R----- R----- R----- R----- R-
+R----- R----- R----- R----- R----- R----- R-
+```

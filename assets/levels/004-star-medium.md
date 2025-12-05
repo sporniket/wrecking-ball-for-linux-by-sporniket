@@ -1,0 +1,22 @@
+---
+level_id: 4
+name: Constellation
+level_type: ReachForStars
+difficulty: Medium
+author: David SPORN
+description: Find and hit all 5 star bricks hidden among the regular bricks!
+version: 1.0
+tags: stars, challenge, pattern
+---
+
+```brick-layout
+R---- R---- R---- R---- R---- R---- R---- R- R-
+R---- S- R---- R---- R---- R---- R---- R---- S- R-
+R---- R---- R---- R---- R---- R---- R---- R- R-
+R---- R---- R---- S- R---- R---- S- R---- R---- R-
+R---- R---- R---- R---- R---- R---- R---- R- R-
+..... ..... ..... ..... ..... ..... ..... .. ..
+R----- R----- R----- R----- R----- R----- R-
+R----- R----- S- R----- R----- R----- R----- R-
+R----- R----- R----- R----- R----- R----- R-
+```

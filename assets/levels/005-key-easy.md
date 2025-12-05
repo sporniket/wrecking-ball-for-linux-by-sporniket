@@ -1,0 +1,20 @@
+---
+level_id: 5
+name: The Gate
+level_type: GetTheKey
+difficulty: Easy
+author: David SPORN
+description: Get the key brick, then hit the exit to win!
+version: 1.0
+tags: puzzle, key, beginner
+---
+
+```brick-layout
+R----- R----- R----- R----- R----- R----- R-
+R----- R----- K-- R----- R----- R----- R----- R-
+R----- R----- R----- R----- R----- R----- R-
+..... ..... ..... ..... ..... ..... ..... .
+R----- R----- R----- R----- R----- R----- R-
+R----- R----- R----- R----- R----- R----- R-
+R----- R----- R----- E--- R----- R----- R----- R-
+```

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../../core/constants.hpp"
 #include <string>
 #include <utility>
 #include <cstdint>
@@ -18,15 +19,7 @@ struct Brick;
 struct Ball;
 struct Paddle;
 
-/**
- * @brief Color representation using RGBA components
- */
-struct Color {
-    uint8_t r;
-    uint8_t g;
-    uint8_t b;
-    uint8_t a;
-};
+// Color struct is defined in constants.hpp
 
 /**
  * @brief Platform-agnostic rendering interface
