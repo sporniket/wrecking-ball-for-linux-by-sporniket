@@ -11,6 +11,12 @@
 #include "level/completion_checker.hpp"
 #include "game/game_state_manager.hpp"
 #include "../ui/gameplay/gameplay_screen.hpp"
+#include "../ui/menu/main_menu_screen.hpp"
+#include "../ui/level_select/level_select_screen.hpp"
+#include "../ui/trophies/trophies_screen.hpp"
+#include "../ui/settings/settings_screen.hpp"
+#include "../ui/level_editor/level_editor_screen.hpp"
+#include "../ui/other_games/other_games_screen.hpp"
 #include <SDL2/SDL.h>
 #include <iostream>
 
@@ -18,6 +24,7 @@ namespace wreckingball {
 
 Application::Application()
     : is_running_(false), is_initialized_(false),
+      current_screen_(GameScreen::MainMenu),
       window_(nullptr),
       performance_frequency_(0), fixed_timestep_(FIXED_TIMESTEP) {
 }
@@ -53,6 +60,12 @@ bool Application::Initialize() {
     // Initialize game systems
     if (!InitializeGameSystems()) {
         logger.LogCritical("Failed to initialize game systems");
+        return false;
+    }
+
+    // Initialize screens (Phase 4 - T121)
+    if (!InitializeScreens()) {
+        logger.LogCritical("Failed to initialize screens");
         return false;
     }
 
@@ -117,6 +130,14 @@ void Application::Shutdown() {
 
     ErrorLogger::GetInstance().LogInfo("Shutting down application...");
 
+    // Cleanup screens (Phase 4)
+    main_menu_screen_.reset();
+    level_select_screen_.reset();
+    trophies_screen_.reset();
+    settings_screen_.reset();
+    level_editor_screen_.reset();
+    other_games_screen_.reset();
+
     // Cleanup game systems (unique_ptrs handle their own cleanup)
     sdl_renderer_.reset();
     gameplay_screen_.reset();
@@ -143,7 +164,7 @@ void Application::Shutdown() {
 }
 
 void Application::ProcessInput([[maybe_unused]] double delta_time) {
-    // T104: Poll input through SDLInputHandler
+    // T104/T121: Poll input through SDLInputHandler
     if (input_handler_) {
         input_handler_->PollInput();
 
@@ -154,33 +175,185 @@ void Application::ProcessInput([[maybe_unused]] double delta_time) {
             return;
         }
 
-        // Forward input to gameplay screen
-        if (gameplay_screen_) {
-            gameplay_screen_->HandleInput();
+        // T121: Handle input based on current screen
+        switch (current_screen_) {
+            case GameScreen::MainMenu:
+                if (main_menu_screen_) {
+                    main_menu_screen_->HandleInput();
+                    if (main_menu_screen_->ShouldExit()) {
+                        ErrorLogger::GetInstance().LogInfo("Exit requested from main menu");
+                        RequestExit();
+                    } else if (main_menu_screen_->HasScreenTransition()) {
+                        GameScreen target = main_menu_screen_->GetTargetScreen();
+                        main_menu_screen_->ResetTransition();
+                        SetCurrentScreen(target);
+                    }
+                }
+                break;
 
-            // Check if user wants to exit gameplay
-            if (gameplay_screen_->ShouldExit()) {
-                ErrorLogger::GetInstance().LogInfo("User requested exit");
-                RequestExit();
-            }
+            case GameScreen::LevelSelect:
+                if (level_select_screen_) {
+                    level_select_screen_->HandleInput();
+                    if (level_select_screen_->ShouldReturnToMenu()) {
+                        SetCurrentScreen(GameScreen::MainMenu);
+                    }
+                }
+                break;
+
+            case GameScreen::Trophies:
+                if (trophies_screen_) {
+                    trophies_screen_->HandleInput();
+                    if (trophies_screen_->ShouldReturnToMenu()) {
+                        SetCurrentScreen(GameScreen::MainMenu);
+                    }
+                }
+                break;
+
+            case GameScreen::Settings:
+                if (settings_screen_) {
+                    settings_screen_->HandleInput();
+                    if (settings_screen_->ShouldReturnToMenu()) {
+                        SetCurrentScreen(GameScreen::MainMenu);
+                    }
+                }
+                break;
+
+            case GameScreen::LevelEditor:
+                if (level_editor_screen_) {
+                    level_editor_screen_->HandleInput();
+                    if (level_editor_screen_->ShouldReturnToMenu()) {
+                        SetCurrentScreen(GameScreen::MainMenu);
+                    }
+                }
+                break;
+
+            case GameScreen::OtherGames:
+                if (other_games_screen_) {
+                    other_games_screen_->HandleInput();
+                    if (other_games_screen_->ShouldReturnToMenu()) {
+                        SetCurrentScreen(GameScreen::MainMenu);
+                    }
+                }
+                break;
+
+            case GameScreen::GameplayCasual:
+            case GameScreen::GameplayArcade:
+                if (gameplay_screen_) {
+                    gameplay_screen_->HandleInput();
+                    if (gameplay_screen_->ShouldExit()) {
+                        SetCurrentScreen(GameScreen::MainMenu);
+                    }
+                }
+                break;
+
+            default:
+                break;
         }
     }
 }
 
 void Application::Update([[maybe_unused]] double delta_time) {
-    // T104: Update game state with fixed timestep
-    if (gameplay_screen_) {
-        gameplay_screen_->Update(delta_time);
+    // T104/T121: Update based on current screen
+    switch (current_screen_) {
+        case GameScreen::MainMenu:
+            if (main_menu_screen_) {
+                main_menu_screen_->Update(delta_time);
+            }
+            break;
+
+        case GameScreen::LevelSelect:
+            if (level_select_screen_) {
+                level_select_screen_->Update(delta_time);
+            }
+            break;
+
+        case GameScreen::Trophies:
+            if (trophies_screen_) {
+                trophies_screen_->Update(delta_time);
+            }
+            break;
+
+        case GameScreen::Settings:
+            if (settings_screen_) {
+                settings_screen_->Update(delta_time);
+            }
+            break;
+
+        case GameScreen::LevelEditor:
+            if (level_editor_screen_) {
+                level_editor_screen_->Update(delta_time);
+            }
+            break;
+
+        case GameScreen::OtherGames:
+            if (other_games_screen_) {
+                other_games_screen_->Update(delta_time);
+            }
+            break;
+
+        case GameScreen::GameplayCasual:
+        case GameScreen::GameplayArcade:
+            if (gameplay_screen_) {
+                gameplay_screen_->Update(delta_time);
+            }
+            break;
+
+        default:
+            break;
     }
 }
 
 void Application::Render([[maybe_unused]] double interpolation) {
-    // T104: Render through GameplayScreen
+    // T104/T121: Render based on current screen
     if (sdl_renderer_) {
         sdl_renderer_->BeginFrame();
 
-        if (gameplay_screen_) {
-            gameplay_screen_->Render();
+        switch (current_screen_) {
+            case GameScreen::MainMenu:
+                if (main_menu_screen_) {
+                    main_menu_screen_->Render();
+                }
+                break;
+
+            case GameScreen::LevelSelect:
+                if (level_select_screen_) {
+                    level_select_screen_->Render();
+                }
+                break;
+
+            case GameScreen::Trophies:
+                if (trophies_screen_) {
+                    trophies_screen_->Render();
+                }
+                break;
+
+            case GameScreen::Settings:
+                if (settings_screen_) {
+                    settings_screen_->Render();
+                }
+                break;
+
+            case GameScreen::LevelEditor:
+                if (level_editor_screen_) {
+                    level_editor_screen_->Render();
+                }
+                break;
+
+            case GameScreen::OtherGames:
+                if (other_games_screen_) {
+                    other_games_screen_->Render();
+                }
+                break;
+
+            case GameScreen::GameplayCasual:
+            case GameScreen::GameplayArcade:
+                if (gameplay_screen_) {
+                    gameplay_screen_->Render();
+                }
+                break;
+
+            default:
+                break;
         }
 
         sdl_renderer_->EndFrame();
@@ -295,6 +468,80 @@ bool Application::InitializeGameSystems() {
     logger.LogInfo("Default level loaded: " + current_level_.name);
     logger.LogInfo("Game systems initialized successfully");
     return true;
+}
+
+bool Application::InitializeScreens() {
+    // T121: Initialize all screen instances
+    ErrorLogger& logger = ErrorLogger::GetInstance();
+
+    try {
+        // Main menu screen (Phase 4)
+        main_menu_screen_ = std::make_unique<MainMenuScreen>(
+            sdl_renderer_.get(),
+            input_handler_.get()
+        );
+        logger.LogInfo("MainMenuScreen created");
+
+        // Placeholder screens (Phase 4)
+        level_select_screen_ = std::make_unique<LevelSelectScreen>(
+            sdl_renderer_.get(),
+            input_handler_.get()
+        );
+        logger.LogInfo("LevelSelectScreen created");
+
+        trophies_screen_ = std::make_unique<TrophiesScreen>(
+            sdl_renderer_.get(),
+            input_handler_.get()
+        );
+        logger.LogInfo("TrophiesScreen created");
+
+        settings_screen_ = std::make_unique<SettingsScreen>(
+            sdl_renderer_.get(),
+            input_handler_.get()
+        );
+        logger.LogInfo("SettingsScreen created");
+
+        level_editor_screen_ = std::make_unique<LevelEditorScreen>(
+            sdl_renderer_.get(),
+            input_handler_.get()
+        );
+        logger.LogInfo("LevelEditorScreen created");
+
+        other_games_screen_ = std::make_unique<OtherGamesScreen>(
+            sdl_renderer_.get(),
+            input_handler_.get()
+        );
+        logger.LogInfo("OtherGamesScreen created");
+
+        logger.LogInfo("All screens initialized successfully");
+        return true;
+    } catch (const std::exception& e) {
+        logger.LogError(std::string("Failed to initialize screens: ") + e.what());
+        return false;
+    }
+}
+
+void Application::SetCurrentScreen(GameScreen screen) {
+    // T121: Switch to different screen
+    ErrorLogger& logger = ErrorLogger::GetInstance();
+
+    logger.LogInfo("Switching to screen: " + std::to_string(static_cast<int>(screen)));
+
+    // Handle special transitions
+    if (screen == GameScreen::GameplayCasual || screen == GameScreen::GameplayArcade) {
+        // T120: Load gameplay screen (will be enhanced in later phases)
+        // For now, load the default level
+        if (game_manager_ && !current_level_.name.empty()) {
+            GameMode mode = (screen == GameScreen::GameplayArcade) ? GameMode::Arcade : GameMode::Casual;
+            if (!game_manager_->StartLevel(current_level_, mode)) {
+                logger.LogError("Failed to start level for gameplay");
+                current_screen_ = GameScreen::MainMenu;
+                return;
+            }
+        }
+    }
+
+    current_screen_ = screen;
 }
 
 } // namespace wreckingball

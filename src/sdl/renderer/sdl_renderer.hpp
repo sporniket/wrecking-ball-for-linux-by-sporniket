@@ -65,6 +65,22 @@ private:
      */
     void SetDrawColor(Color color);
 
+    /**
+     * @brief Draw a single character using simple bitmap font
+     * @param ch Character to draw
+     * @param x X position
+     * @param y Y position
+     * @param color Text color
+     */
+    void DrawChar(char ch, int x, int y, Color color);
+
+    /**
+     * @brief Get bitmap for a character (simple 5x7 font)
+     * @param ch Character to get bitmap for
+     * @return Pointer to 7-byte bitmap (each byte is one row, 5 bits used)
+     */
+    const uint8_t* GetCharBitmap(char ch) const;
+
     SDL_Window* window_;
     SDL_Renderer* renderer_;
     int logical_width_;

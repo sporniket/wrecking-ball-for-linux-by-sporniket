@@ -70,6 +70,13 @@ set(SOURCES
     src/sdl/audio/sdl_audio_player.cpp
     # Phase 3: UI screens
     src/ui/gameplay/gameplay_screen.cpp
+    # Phase 4: Main menu and navigation screens
+    src/ui/menu/main_menu_screen.cpp
+    src/ui/level_select/level_select_screen.cpp
+    src/ui/trophies/trophies_screen.cpp
+    src/ui/settings/settings_screen.cpp
+    src/ui/level_editor/level_editor_screen.cpp
+    src/ui/other_games/other_games_screen.cpp
     # Core entities are header-only structs (Phase 2 - Foundational complete)
 )
 

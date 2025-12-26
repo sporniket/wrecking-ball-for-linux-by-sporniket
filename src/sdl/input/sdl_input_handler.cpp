@@ -64,11 +64,17 @@ void SDLInputHandler::PollInput() {
 void SDLInputHandler::ProcessKeyboard() {
     const Uint8* keyboard_state = SDL_GetKeyboardState(nullptr);
 
-    // Paddle movement (continuous)
+    // Paddle movement (continuous) - supports both horizontal and vertical movement
+    // Horizontal (for gameplay): LEFT/RIGHT arrows
+    // Vertical (for menus): UP/DOWN arrows
     if (keyboard_state[key_move_left_]) {
         input_state_.paddle_movement = -1.0f;  // Move left
     } else if (keyboard_state[key_move_right_]) {
         input_state_.paddle_movement = 1.0f;   // Move right
+    } else if (keyboard_state[SDL_SCANCODE_UP]) {
+        input_state_.paddle_movement = -1.0f;  // Move up
+    } else if (keyboard_state[SDL_SCANCODE_DOWN]) {
+        input_state_.paddle_movement = 1.0f;   // Move down
     }
 
     // Launch ball (edge-triggered)

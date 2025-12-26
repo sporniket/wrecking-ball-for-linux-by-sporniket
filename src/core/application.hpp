@@ -5,6 +5,7 @@
 
 #include "constants.hpp"
 #include "entities/level.hpp"
+#include "entities/game_screen.hpp"
 #include <cstdint>
 #include <memory>
 
@@ -23,6 +24,14 @@ class PhysicsEngine;
 class LevelCompletionChecker;
 class GameStateManager;
 class GameplayScreen;
+
+// Forward declarations for screen classes (Phase 4)
+class MainMenuScreen;
+class LevelSelectScreen;
+class TrophiesScreen;
+class SettingsScreen;
+class LevelEditorScreen;
+class OtherGamesScreen;
 
 /**
  * @brief Main application class managing game lifecycle
@@ -104,8 +113,21 @@ private:
      */
     bool InitializeGameSystems();
 
+    /**
+     * @brief Initialize screen instances (Phase 4 - T121)
+     * @return true on success, false on failure
+     */
+    bool InitializeScreens();
+
+    /**
+     * @brief Switch to a different screen (Phase 4 - T121)
+     * @param screen Target screen to switch to
+     */
+    void SetCurrentScreen(GameScreen screen);
+
     bool is_running_;
     bool is_initialized_;
+    GameScreen current_screen_;
 
     // SDL2 components
     SDL_Window* window_;
@@ -123,6 +145,14 @@ private:
     std::unique_ptr<LevelCompletionChecker> completion_checker_;
     std::unique_ptr<GameStateManager> game_manager_;
     std::unique_ptr<GameplayScreen> gameplay_screen_;
+
+    // Screen instances (Phase 4)
+    std::unique_ptr<MainMenuScreen> main_menu_screen_;
+    std::unique_ptr<LevelSelectScreen> level_select_screen_;
+    std::unique_ptr<TrophiesScreen> trophies_screen_;
+    std::unique_ptr<SettingsScreen> settings_screen_;
+    std::unique_ptr<LevelEditorScreen> level_editor_screen_;
+    std::unique_ptr<OtherGamesScreen> other_games_screen_;
 
     // Current level (must persist throughout gameplay)
     Level current_level_;
