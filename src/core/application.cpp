@@ -10,6 +10,7 @@
 #include "physics/physics_engine.hpp"
 #include "level/completion_checker.hpp"
 #include "game/game_state_manager.hpp"
+#include "../ui/gameplay/casual_mode_screen.hpp"
 #include "../ui/gameplay/gameplay_screen.hpp"
 #include "../ui/menu/main_menu_screen.hpp"
 #include "../ui/level_select/level_select_screen.hpp"
@@ -17,6 +18,8 @@
 #include "../ui/settings/settings_screen.hpp"
 #include "../ui/level_editor/level_editor_screen.hpp"
 #include "../ui/other_games/other_games_screen.hpp"
+#include "../ui/gameplay/arcade_mode_screen.hpp"
+#include "../ui/gameplay/game_over_screen.hpp"
 #include <SDL2/SDL.h>
 #include <iostream>
 
@@ -138,9 +141,13 @@ void Application::Shutdown() {
     level_editor_screen_.reset();
     other_games_screen_.reset();
 
+    // Cleanup Phase 5 screens
+    casual_mode_screen_.reset();
+    arcade_mode_screen_.reset();
+    game_over_screen_.reset();
+
     // Cleanup game systems (unique_ptrs handle their own cleanup)
     sdl_renderer_.reset();
-    gameplay_screen_.reset();
     game_manager_.reset();
     completion_checker_.reset();
     physics_engine_.reset();
@@ -237,10 +244,43 @@ void Application::ProcessInput([[maybe_unused]] double delta_time) {
                 break;
 
             case GameScreen::GameplayCasual:
+                if (casual_mode_screen_) {
+                    casual_mode_screen_->HandleInput();
+                    if (casual_mode_screen_->ShouldExit()) {
+                        SetCurrentScreen(GameScreen::MainMenu);
+                    }
+                }
+                break;
+
             case GameScreen::GameplayArcade:
-                if (gameplay_screen_) {
-                    gameplay_screen_->HandleInput();
-                    if (gameplay_screen_->ShouldExit()) {
+                if (arcade_mode_screen_) {
+                    arcade_mode_screen_->HandleInput();
+                    if (arcade_mode_screen_->ShouldExit()) {
+                        // Check if game is over
+                        const GameState& state = game_manager_->GetGameState();
+                        if (state.IsGameOver()) {
+                            // Show game over screen (don't reset yet - game over needs the data)
+                            if (game_over_screen_) {
+                                game_over_screen_->SetStats(state.score, arcade_mode_screen_->GetHighestLevelReached());
+                                SetCurrentScreen(GameScreen::GameOver);
+                            }
+                        } else {
+                            // Exiting from life selection or during gameplay (not game over) - reset state
+                            arcade_mode_screen_->Reset();
+                            SetCurrentScreen(GameScreen::MainMenu);
+                        }
+                    }
+                }
+                break;
+
+            case GameScreen::GameOver:
+                if (game_over_screen_) {
+                    game_over_screen_->HandleInput();
+                    if (game_over_screen_->ShouldExit()) {
+                        // Exiting from game over screen - now reset arcade mode state
+                        if (arcade_mode_screen_) {
+                            arcade_mode_screen_->Reset();
+                        }
                         SetCurrentScreen(GameScreen::MainMenu);
                     }
                 }
@@ -292,10 +332,19 @@ void Application::Update([[maybe_unused]] double delta_time) {
             break;
 
         case GameScreen::GameplayCasual:
-        case GameScreen::GameplayArcade:
-            if (gameplay_screen_) {
-                gameplay_screen_->Update(delta_time);
+            if (casual_mode_screen_) {
+                casual_mode_screen_->Update(delta_time);
             }
+            break;
+
+        case GameScreen::GameplayArcade:
+            if (arcade_mode_screen_) {
+                arcade_mode_screen_->Update(delta_time);
+            }
+            break;
+
+        case GameScreen::GameOver:
+            // Game over screen is static, no update needed
             break;
 
         default:
@@ -346,9 +395,20 @@ void Application::Render([[maybe_unused]] double interpolation) {
                 break;
 
             case GameScreen::GameplayCasual:
+                if (casual_mode_screen_) {
+                    casual_mode_screen_->Render();
+                }
+                break;
+
             case GameScreen::GameplayArcade:
-                if (gameplay_screen_) {
-                    gameplay_screen_->Render();
+                if (arcade_mode_screen_) {
+                    arcade_mode_screen_->Render();
+                }
+                break;
+
+            case GameScreen::GameOver:
+                if (game_over_screen_) {
+                    game_over_screen_->Render();
                 }
                 break;
 
@@ -432,23 +492,16 @@ bool Application::InitializeGameSystems() {
     game_manager_ = std::make_unique<GameStateManager>();
     logger.LogInfo("GameStateManager created");
 
-    // T102: Create GameplayScreen
-    gameplay_screen_ = std::make_unique<GameplayScreen>(
-        sdl_renderer_.get(),
-        input_handler_.get(),
-        game_manager_.get()
-    );
-    logger.LogInfo("GameplayScreen created");
-
-    // T103: Load default level (level 1) on game start
-    auto level_opt = level_parser_->LoadLevel("assets/levels/001-classical-easy.md");
+    // T103: Load default level (level 1) - will be used by casual mode
+    auto level_opt = level_parser_->LoadLevel("assets/levels/001.md");
     if (!level_opt.has_value()) {
-        logger.LogError("Failed to load default level: assets/levels/001-classical-easy.md");
+        logger.LogError("Failed to load default level: assets/levels/001.md");
         return false;
     }
 
     // Store level persistently to avoid dangling pointer
     current_level_ = std::move(*level_opt);
+    current_level_.level_id = 1;  // Set level_id from filename
 
     // Log brick count for debugging
     int total_bricks = 0;
@@ -459,11 +512,6 @@ bool Application::InitializeGameSystems() {
     }
     logger.LogInfo("Level has " + std::to_string(current_level_.bricks.size()) +
                    " brick entries (" + std::to_string(total_bricks) + " non-empty)");
-
-    if (!game_manager_->StartLevel(current_level_, GameMode::Casual)) {
-        logger.LogError("Failed to start level");
-        return false;
-    }
 
     logger.LogInfo("Default level loaded: " + current_level_.name);
     logger.LogInfo("Game systems initialized successfully");
@@ -513,6 +561,27 @@ bool Application::InitializeScreens() {
         );
         logger.LogInfo("OtherGamesScreen created");
 
+        // Phase 5 screens
+        casual_mode_screen_ = std::make_unique<CasualModeScreen>(
+            sdl_renderer_.get(),
+            input_handler_.get(),
+            game_manager_.get()
+        );
+        logger.LogInfo("CasualModeScreen created");
+
+        arcade_mode_screen_ = std::make_unique<ArcadeModeScreen>(
+            sdl_renderer_.get(),
+            input_handler_.get(),
+            game_manager_.get()
+        );
+        logger.LogInfo("ArcadeModeScreen created");
+
+        game_over_screen_ = std::make_unique<GameOverScreen>(
+            sdl_renderer_.get(),
+            input_handler_.get()
+        );
+        logger.LogInfo("GameOverScreen created");
+
         logger.LogInfo("All screens initialized successfully");
         return true;
     } catch (const std::exception& e) {
@@ -528,16 +597,26 @@ void Application::SetCurrentScreen(GameScreen screen) {
     logger.LogInfo("Switching to screen: " + std::to_string(static_cast<int>(screen)));
 
     // Handle special transitions
-    if (screen == GameScreen::GameplayCasual || screen == GameScreen::GameplayArcade) {
-        // T120: Load gameplay screen (will be enhanced in later phases)
-        // For now, load the default level
-        if (game_manager_ && !current_level_.name.empty()) {
-            GameMode mode = (screen == GameScreen::GameplayArcade) ? GameMode::Arcade : GameMode::Casual;
-            if (!game_manager_->StartLevel(current_level_, mode)) {
-                logger.LogError("Failed to start level for gameplay");
+    if (screen == GameScreen::GameplayCasual) {
+        // Reload default level to reset brick state (casual mode cleanup)
+        auto level_opt = level_parser_->LoadLevel("assets/levels/001.md");
+        if (level_opt.has_value()) {
+            current_level_ = std::move(*level_opt);
+            current_level_.level_id = 1;
+        }
+
+        // Initialize casual mode with reloaded level
+        if (casual_mode_screen_ && !current_level_.name.empty()) {
+            if (!casual_mode_screen_->Initialize(current_level_)) {
+                logger.LogError("Failed to initialize casual mode");
                 current_screen_ = GameScreen::MainMenu;
                 return;
             }
+        }
+    } else if (screen == GameScreen::GameplayArcade) {
+        // Phase 5: Initialize arcade mode with life selection
+        if (arcade_mode_screen_) {
+            arcade_mode_screen_->ShowLifeSelection();
         }
     }
 

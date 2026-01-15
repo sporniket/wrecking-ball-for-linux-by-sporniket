@@ -77,6 +77,10 @@ set(SOURCES
     src/ui/settings/settings_screen.cpp
     src/ui/level_editor/level_editor_screen.cpp
     src/ui/other_games/other_games_screen.cpp
+    # Phase 5: Casual and Arcade mode screens
+    src/ui/gameplay/casual_mode_screen.cpp
+    src/ui/gameplay/arcade_mode_screen.cpp
+    src/ui/gameplay/game_over_screen.cpp
     # Core entities are header-only structs (Phase 2 - Foundational complete)
 )
 

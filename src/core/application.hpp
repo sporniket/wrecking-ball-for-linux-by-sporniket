@@ -33,6 +33,11 @@ class SettingsScreen;
 class LevelEditorScreen;
 class OtherGamesScreen;
 
+// Forward declarations for Phase 5 screens
+class CasualModeScreen;
+class ArcadeModeScreen;
+class GameOverScreen;
+
 /**
  * @brief Main application class managing game lifecycle
  *
@@ -144,7 +149,6 @@ private:
     std::unique_ptr<PhysicsEngine> physics_engine_;
     std::unique_ptr<LevelCompletionChecker> completion_checker_;
     std::unique_ptr<GameStateManager> game_manager_;
-    std::unique_ptr<GameplayScreen> gameplay_screen_;
 
     // Screen instances (Phase 4)
     std::unique_ptr<MainMenuScreen> main_menu_screen_;
@@ -153,6 +157,11 @@ private:
     std::unique_ptr<SettingsScreen> settings_screen_;
     std::unique_ptr<LevelEditorScreen> level_editor_screen_;
     std::unique_ptr<OtherGamesScreen> other_games_screen_;
+
+    // Phase 5 screens (Casual and Arcade Mode)
+    std::unique_ptr<CasualModeScreen> casual_mode_screen_;
+    std::unique_ptr<ArcadeModeScreen> arcade_mode_screen_;
+    std::unique_ptr<GameOverScreen> game_over_screen_;
 
     // Current level (must persist throughout gameplay)
     Level current_level_;

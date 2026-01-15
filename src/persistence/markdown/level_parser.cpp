@@ -213,7 +213,7 @@ bool LevelParser::ParseFrontMatter(const std::string& content, Level& level) {
         value.erase(value.find_last_not_of(" \t\"") + 1);
 
         // Set level properties
-        if (key == "id") {
+        if (key == "id" || key == "level_id") {
             level.level_id = std::stoi(value);
         } else if (key == "name") {
             level.name = value;
